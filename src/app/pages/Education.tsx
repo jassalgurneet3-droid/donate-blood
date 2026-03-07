@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, ArrowRight, Droplets } from "lucide-react";
 import { VideoCard } from "../components/ui/VideoCard";
@@ -6,19 +6,19 @@ import { Chatbot } from "../components/ui/Chatbot";
 
 const educationalVideos = [
   {
-    id: "dQw4w9WgXcQ",
+    id: "-AxIGttVZBo",
     title: "Blood Donation Process Explained",
     description:
       "Learn step-by-step what happens during blood donation from registration to recovery.",
   },
   {
-    id: "dQw4w9WgXcQ",
+    id: "hgSfq1r1u2I",
     title: "Who Can Donate Blood?",
     description:
       "Understand eligibility criteria, age requirements, and health conditions for donors.",
   },
   {
-    id: "dQw4w9WgXcQ",
+    id: "dPl4lDyipgs",
     title: "Importance of Blood Donation",
     description:
       "Discover how your donation saves lives and supports medical treatments worldwide.",
@@ -27,6 +27,20 @@ const educationalVideos = [
 
 export default function Education() {
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Added useEffect to handle the background scroll locking
+  useEffect(() => {
+    if (isChatOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto"; 
+    }
+
+    // Cleanup function to ensure scrolling comes back if the component unmounts
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isChatOpen]);
 
   return (
     <div className="min-h-screen py-12 px-6">
@@ -49,7 +63,7 @@ export default function Education() {
 
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="fixed bottom-6 right-6 bg-red-700 text-white px-6 py-3 rounded-full"
+          className="fixed bottom-6 right-6 bg-red-700 text-white px-6 py-3 rounded-full z-40"
         >
           Ask Question
         </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import {
   Search,
   MapPin,
@@ -8,29 +8,48 @@ import {
   Building2,
   Phone,
   Droplets,
+  Navigation,
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router";
-import { mockDonors, bloodGroups } from "../utils/mockData";
+import { bloodGroups } from "../utils/mockData";
 import { supabase } from "../../lib/supabase";
 
 export default function Home() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState("");
   const [location, setLocation] = useState("");
   const [filteredDonors, setFilteredDonors] = useState<any[]>([]);
-  // Added state to track if we are currently fetching GPS
   const [isLocating, setIsLocating] = useState(false);
 
-  const loadDonors = async () => {
-    const { data } = await supabase.from("donors").select("*");
-    if (data) {
-      setFilteredDonors(data);
+  // Updated to fetch "Best Match" based on city
+  const loadDonors = async (searchCity?: string) => {
+    let query = supabase.from("donors").select("*");
+
+    // If we have a city, prioritize donors from that location
+    if (searchCity) {
+      query = query.ilike("city", `%${searchCity}%`);
+    }
+
+    // Limit to 6 to keep the UI clean
+    query = query.limit(6);
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      // If we filtered by city but found nobody, fallback to all recent donors so the page isn't empty
+      if (searchCity && data.length === 0) {
+        const { data: fallbackData } = await supabase.from("donors").select("*").limit(6);
+        setFilteredDonors(fallbackData || []);
+      } else {
+        setFilteredDonors(data);
+      }
     }
   };
 
-  // Added function to handle GPS to City Name conversion
   const fetchAutoLocation = () => {
     if (!navigator.geolocation) {
       console.warn("Geolocation is not supported by your browser");
+      loadDonors(); // Load generic donors if no GPS
       return;
     }
 
@@ -41,23 +60,32 @@ export default function Home() {
         try {
           const { latitude, longitude } = position.coords;
           
-          // Reverse geocoding via OpenStreetMap (Free, no API key needed)
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           );
           const data = await response.json();
 
-          const currentCity = 
-            data.address.city || 
-            data.address.town || 
-            data.address.village || 
-            data.address.state_district;
+          const townOrCity = data.address.city || data.address.town || data.address.village;
+          const district = data.address.state_district || data.address.county;
+          const state = data.address.state;
+          const pincode = data.address.postcode;
 
-          if (currentCity) {
-            setLocation(currentCity);
+          const addressParts = [townOrCity, district, state, pincode].filter(Boolean);
+
+          if (addressParts.length > 0) {
+            const fullAddress = addressParts.join(", ");
+            setLocation(fullAddress);
+            
+            // Automatically fetch best match donors for this specific city!
+            if (townOrCity) {
+              loadDonors(townOrCity);
+            } else {
+              loadDonors();
+            }
           }
         } catch (error) {
           console.error("Error reverse geocoding:", error);
+          loadDonors();
         } finally {
           setIsLocating(false);
         }
@@ -65,15 +93,13 @@ export default function Home() {
       (error) => {
         console.error("Error getting location:", error.message);
         setIsLocating(false);
+        loadDonors();
       }
     );
   };
 
   useEffect(() => {
-    // Automatically try to get location when page loads
     fetchAutoLocation();
-
-    loadDonors();   // 👈 add this
 
     const channel = supabase
       .channel("donors-changes")
@@ -82,7 +108,9 @@ export default function Home() {
         { event: "*", schema: "public", table: "donors" },
         (payload) => {
           console.log("Change received:", payload);
-          loadDonors();
+          // Reload based on current location string if possible
+          const currentCity = location.split(',')[0].trim();
+          loadDonors(currentCity || undefined);
         }
       )
       .subscribe();
@@ -90,19 +118,19 @@ export default function Home() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = async () => {
-    let query = supabase
-      .from("donors")
-      .select("*")
+    let query = supabase.from("donors").select("*");
 
     if (selectedBloodGroup && selectedBloodGroup !== "Select Blood Group") {
-      query = query.eq("bloodGroup", selectedBloodGroup);
+      // Also handles potential snake_case column mismatch for searches
+      query = query.or(`bloodGroup.eq.${selectedBloodGroup},blood_group.eq.${selectedBloodGroup}`);
     }
 
     if (location && location.trim() !== "") {
-      query = query.ilike("city", `%${location.trim()}%`);
+      const searchCity = location.split(',')[0].trim();
+      query = query.ilike("city", `%${searchCity}%`);
     }
 
     const { data, error } = await query;
@@ -151,7 +179,7 @@ export default function Home() {
       </section>
 
       {/* Search Section */}
-      <section className="py-12 bg-white shadow-md -mt-8 mx-4 md:mx-8 lg:mx-auto lg:max-w-5xl rounded-xl">
+      <section className="py-12 bg-white shadow-md -mt-8 mx-4 md:mx-8 lg:mx-auto lg:max-w-5xl rounded-xl relative z-10">
         <div className="px-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Find Blood Donors
@@ -178,16 +206,27 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Location
               </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="relative flex items-center">
+                <MapPin className="absolute left-3 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  // Changed the placeholder slightly to indicate it might be thinking
                   placeholder={isLocating ? "Locating you..." : "Enter city or state"}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                 />
+                <button
+                  onClick={fetchAutoLocation}
+                  disabled={isLocating}
+                  className="absolute right-3 p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                  title="Use my current location"
+                >
+                  {isLocating ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Navigation className="w-5 h-5" />
+                  )}
+                </button>
               </div>
             </div>
             <div className="flex items-end">
@@ -282,51 +321,70 @@ export default function Home() {
 
           {filteredDonors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDonors.map((donor, index) => (
-                <motion.div
-                  key={donor.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {donor.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {donor.age} years • {donor.gender}
-                      </p>
-                    </div>
-                    <div className="bg-red-600 text-white px-3 py-1 rounded-lg font-bold">
-                      {donor.bloodGroup}
-                    </div>
-                  </div>
+              {filteredDonors.map((donor, index) => {
+                
+                // --- SAFE DATA MAPPING ---
+                // This protects your UI from blank variables whether Supabase uses camelCase or snake_case
+                const donorName = donor.name || donor.full_name || "Generous Donor";
+                const donorAge = donor.age || "-";
+                const donorGender = donor.gender || "-";
+                const bloodGroup = donor.bloodGroup || donor.blood_group || "?";
+                const city = donor.city || "Unknown City";
+                const state = donor.state || "";
+                
+                const lastDonationRaw = donor.lastDonation || donor.last_donation;
+                const lastDonationDate = lastDonationRaw 
+                  ? new Date(lastDonationRaw).toLocaleDateString() 
+                  : "Never / Unknown";
+                  
+                const isEmergency = donor.availableForEmergency || donor.available_for_emergency || false;
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      {donor.city}, {donor.state}
+                return (
+                  <motion.div
+                    key={donor.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {donorName}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {donorAge} years • {donorGender}
+                        </p>
+                      </div>
+                      <div className="bg-red-600 text-white px-3 py-1 rounded-lg font-bold">
+                        {bloodGroup}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Droplets className="w-4 h-4 text-gray-400" />
-                      Last donated: {new Date(donor.lastDonation).toLocaleDateString()}
-                    </div>
-                  </div>
 
-                  {donor.availableForEmergency && (
-                    <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm font-medium mb-4">
-                      ✓ Available for Emergency
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        {city}{state ? `, ${state}` : ''}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Droplets className="w-4 h-4 text-gray-400" />
+                        Last donated: {lastDonationDate}
+                      </div>
                     </div>
-                  )}
 
-                  <button className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    Contact Donor
-                  </button>
-                </motion.div>
-              ))}
+                    {isEmergency && (
+                      <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm font-medium mb-4">
+                        ✓ Available for Emergency
+                      </div>
+                    )}
+
+                    <button className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      Contact Donor
+                    </button>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

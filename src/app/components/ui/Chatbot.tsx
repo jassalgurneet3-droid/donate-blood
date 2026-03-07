@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Send, MessageCircle } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import ReactMarkdown from "react-markdown"; // <-- 1. Import ReactMarkdown
+import ReactMarkdown from "react-markdown";
 
 interface Message {
     id: number;
@@ -49,6 +49,18 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     const [isTyping, setIsTyping] = useState(false);
     
     const chatSessionRef = useRef<any>(null);
+    // 1. Added a ref to point to the bottom of the message list
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // 2. Added a function to handle the smooth scrolling
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // 3. Added a useEffect to trigger the scroll whenever messages or isTyping changes
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isTyping]);
 
     useEffect(() => {
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -169,7 +181,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 overscroll-contain">
                         {messages.map((message) => (
                             <motion.div
                                 key={message.id}
@@ -191,7 +203,6 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                                         lineHeight: "1.5",
                                     }}
                                 >
-                                    {/* 2. Render normal text for user, Markdown for bot */}
                                     {message.sender === "user" ? (
                                         message.text
                                     ) : (
@@ -215,6 +226,8 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                                 <TypingIndicator />
                             </div>
                         )}
+                        {/* 4. Added the invisible div anchor at the bottom to scroll to */}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     <div className="p-4 border-t border-gray-200">
