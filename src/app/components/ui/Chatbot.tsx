@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Send, MessageCircle } from "lucide-react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import ReactMarkdown from "react-markdown"; // <-- 1. Import ReactMarkdown
 
 interface Message {
     id: number;
@@ -12,17 +14,6 @@ interface ChatbotProps {
     isOpen: boolean;
     onClose: () => void;
 }
-
-const bloodDonationFAQs: { [key: string]: string } = {
-    "who can donate blood": "Most healthy adults aged 17-65 who weigh at least 50kg can donate blood. You must be in good health and feeling well on the day of donation.",
-    "how often can someone donate": "Whole blood can be donated every 56 days (about 8 weeks). Platelet donors can donate more frequently, up to 24 times per year.",
-    "what are blood types": "There are 8 main blood types: A+, A-, B+, B-, AB+, AB-, O+, and O-. O- is the universal donor, while AB+ is the universal recipient.",
-    "how long does donation take": "The entire donation process takes about 45-60 minutes, but the actual blood draw only takes 8-10 minutes.",
-    "is it safe": "Yes, blood donation is very safe. Sterile, single-use equipment is used for each donor, making it impossible to contract diseases.",
-    "what happens after": "After donation, rest for 10-15 minutes and have refreshments. Drink plenty of fluids and avoid strenuous activity for the rest of the day.",
-    "can i donate if": "Eligibility depends on various factors including medications, travel history, and health conditions. Consult with donation center staff for specific cases.",
-    "why donate": "Blood donation saves lives. One donation can help up to three patients. There's always a need for blood, especially during emergencies.",
-};
 
 function TypingIndicator() {
     return (
@@ -56,23 +47,35 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     ]);
     const [inputValue, setInputValue] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    
+    const chatSessionRef = useRef<any>(null);
 
-    const findAnswer = (question: string): string => {
-        const lowerQuestion = question.toLowerCase();
-        for (const [key, value] of Object.entries(bloodDonationFAQs)) {
-            if (lowerQuestion.includes(key)) {
-                return value;
-            }
+    useEffect(() => {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (!apiKey) {
+            console.error("Gemini API key is missing. Check your .env file.");
+            return;
         }
-        return "I'm not sure about that specific question. For detailed information, please consult with your local blood donation center or healthcare provider.";
-    };
 
-    const handleSend = () => {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash",
+            systemInstruction: "You are a helpful and empathetic Blood Donation Helper assistant. Keep your answers concise, clear, and use markdown (like bullet points and bold text) to make information easy to read."
+        });
+
+        // Initialize chat session
+        chatSessionRef.current = model.startChat({
+            history: [],
+        });
+    }, []);
+
+    const handleSend = async () => {
         if (inputValue.trim() === "") return;
 
+        const userText = inputValue;
         const userMessage: Message = {
             id: Date.now(),
-            text: inputValue,
+            text: userText,
             sender: "user",
         };
 
@@ -80,15 +83,32 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         setInputValue("");
         setIsTyping(true);
 
-        setTimeout(() => {
+        try {
+            if (!chatSessionRef.current) {
+                throw new Error("Chat session not initialized");
+            }
+            
+            const result = await chatSessionRef.current.sendMessage(userText);
+            const responseText = result.response.text();
+
             const botResponse: Message = {
                 id: Date.now() + 1,
-                text: findAnswer(inputValue),
+                text: responseText,
                 sender: "bot",
             };
             setMessages((prev) => [...prev, botResponse]);
+            
+        } catch (error) {
+            console.error("Error communicating with Gemini:", error);
+            const errorMessage: Message = {
+                id: Date.now() + 1,
+                text: "I'm having a little trouble connecting right now. Please try again in a moment.",
+                sender: "bot",
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -137,7 +157,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                                         fontSize: "0.75rem",
                                     }}
                                 >
-                                    Online
+                                    Powered by Gemini AI
                                 </p>
                             </div>
                         </div>
@@ -155,21 +175,38 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                                 key={message.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"
-                                    }`}
+                                className={`flex ${
+                                    message.sender === "user" ? "justify-end" : "justify-start"
+                                }`}
                             >
                                 <div
-                                    className={`max-w-[75%] p-4 rounded-2xl ${message.sender === "user"
+                                    className={`max-w-[85%] p-4 rounded-2xl ${
+                                        message.sender === "user"
                                             ? "bg-gradient-to-r from-[#8B0000] to-[#C62828] text-white"
                                             : "bg-gray-100 text-gray-800"
-                                        }`}
+                                    }`}
                                     style={{
                                         fontFamily: "Inter, sans-serif",
                                         fontSize: "0.875rem",
                                         lineHeight: "1.5",
                                     }}
                                 >
-                                    {message.text}
+                                    {/* 2. Render normal text for user, Markdown for bot */}
+                                    {message.sender === "user" ? (
+                                        message.text
+                                    ) : (
+                                        <ReactMarkdown
+                                            components={{
+                                                p: ({node, ...props}) => <p className="m-0 mb-2 last:mb-0" {...props} />,
+                                                ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                                                ol: ({node, ...props}) => <ol className="list-decimal ml-4 mb-2" {...props} />,
+                                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                                strong: ({node, ...props}) => <strong className="font-semibold text-gray-900" {...props} />,
+                                            }}
+                                        >
+                                            {message.text}
+                                        </ReactMarkdown>
+                                    )}
                                 </div>
                             </motion.div>
                         ))}
@@ -196,9 +233,14 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                             />
                             <button
                                 onClick={handleSend}
-                                className="w-12 h-12 rounded-full bg-gradient-to-r from-[#8B0000] to-[#C62828] text-white flex items-center justify-center hover:shadow-lg transition-all"
+                                disabled={isTyping}
+                                className={`w-12 h-12 rounded-full text-white flex items-center justify-center transition-all ${
+                                    isTyping 
+                                        ? "bg-gray-400 cursor-not-allowed" 
+                                        : "bg-gradient-to-r from-[#8B0000] to-[#C62828] hover:shadow-lg"
+                                }`}
                                 style={{
-                                    boxShadow: "0 4px 12px rgba(139, 0, 0, 0.3)",
+                                    boxShadow: isTyping ? "none" : "0 4px 12px rgba(139, 0, 0, 0.3)",
                                 }}
                             >
                                 <Send size={20} />
