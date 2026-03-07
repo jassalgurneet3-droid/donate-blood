@@ -16,6 +16,7 @@ export default function Header() {
     { path: "/nearby-centres", label: "Find Nearby Centre" },
     { path: "/blood-compatibility", label: "Blood Compatibility" },
     { path: "/education", label: "Education" }, 
+    { path: "/admin", label: "Admin" }
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -64,6 +65,8 @@ export default function Header() {
                   : "text-gray-700 hover:text-red-600"
                   }`}
               >
+                
+
                 {link.label}
                 {isActive(link.path) && (
                   <motion.div

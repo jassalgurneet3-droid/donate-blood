@@ -9,6 +9,7 @@ import SignupForm from "./pages/SignupForm";
 import EligibilityCheck from "./pages/EligibilityCheck";
 import NotFound from "./pages/NotFound";
 import Education from "../app/pages/Education";
+import AdminDashboard from "./pages/AdminDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -19,8 +20,9 @@ export const router = createBrowserRouter([
       { path: "become-donor", Component: BecomeDonor },
       { path: "blood-compatibility", Component: BloodCompatibility },
       { path: "nearby-centres", Component: NearbyCentres },
-      
-      { path: "education", Component: Education }, 
+
+      { path: "education", Component: Education },
+      { path: "admin", Component: AdminDashboard },
 
       { path: "auth", Component: Auth },
       { path: "signup", Component: SignupForm },
