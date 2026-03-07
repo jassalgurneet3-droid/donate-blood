@@ -1,11 +1,14 @@
 import { Link, useLocation } from "react-router";
 import { Droplet, Menu, X } from "lucide-react";
-import { useState } from "react";
+// import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   const navLinks = [
     { path: "/", label: "Find Blood" },
@@ -15,6 +18,25 @@ export default function Header() {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+
+    getUser();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -36,11 +58,10 @@ export default function Header() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-medium transition-colors relative ${
-                  isActive(link.path)
-                    ? "text-red-600"
-                    : "text-gray-700 hover:text-red-600"
-                }`}
+                className={`text-sm font-medium transition-colors relative ${isActive(link.path)
+                  ? "text-red-600"
+                  : "text-gray-700 hover:text-red-600"
+                  }`}
               >
                 {link.label}
                 {isActive(link.path) && (
@@ -55,15 +76,27 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Auth Button */}
-          <div className="hidden md:block">
-            <Link
-              to="/auth"
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-            >
-              Register / Login
+          {/* Register/Login button */}
+          {!user && (
+            <Link to="/auth">
+              <button className="bg-red-600 text-white px-4 py-2 rounded-lg">
+                Register / Login
+              </button>
             </Link>
-          </div>
+          )}
+
+          {/* Logout button */}
+          {user && (
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              className="bg-gray-800 text-white px-4 py-2 rounded-lg"
+            >
+              Logout
+            </button>
+          )}
 
           {/* Mobile Menu Button */}
           <button
@@ -91,11 +124,10 @@ export default function Header() {
                   key={link.path}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive(link.path)
-                      ? "bg-red-50 text-red-600"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive(link.path)
+                    ? "bg-red-50 text-red-600"
+                    : "text-gray-700 hover:bg-gray-50"
+                    }`}
                 >
                   {link.label}
                 </Link>
