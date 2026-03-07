@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion } from "motion/react"; // or "framer-motion" depending on your setup
 import {
   MapPin,
   Phone,
@@ -9,8 +9,25 @@ import {
   Loader2,
 } from "lucide-react";
 import { mockBloodCentres, BloodCentre } from "../utils/mockData";
+import { GoogleMap, useLoadScript, Marker, InfoWindow } from "@react-google-maps/api";
+
+const mapContainerStyle = {
+  width: "100%",
+  height: "400px",
+  borderRadius: "0.75rem",
+};
+
+// Default center
+const defaultCenter = {
+  lat: 20.5937,
+  lng: 78.9629,
+};
 
 export default function NearbyCentres() {
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", 
+  });
+
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -18,6 +35,7 @@ export default function NearbyCentres() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [centres, setCentres] = useState<BloodCentre[]>(mockBloodCentres);
+  const [selectedCentre, setSelectedCentre] = useState<BloodCentre | null>(null);
 
   const calculateDistance = (
     lat1: number,
@@ -53,7 +71,6 @@ export default function NearbyCentres() {
         const { latitude, longitude } = position.coords;
         setUserLocation({ latitude, longitude });
 
-        // Calculate distances and sort centres
         const centresWithDistance = mockBloodCentres
           .map((centre) => ({
             ...centre,
@@ -80,9 +97,13 @@ export default function NearbyCentres() {
     getUserLocation();
   }, []);
 
+  if (loadError) return <div className="p-8 text-center text-red-600">Error loading maps. Please check your API key.</div>;
+  if (!isLoaded) return <div className="p-8 text-center text-gray-600">Loading Maps...</div>;
+
   return (
     <div className="bg-gray-50 min-h-screen py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -146,27 +167,61 @@ export default function NearbyCentres() {
           )}
         </motion.div>
 
-        {/* Map Placeholder */}
+        {/* Google Map Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="bg-white rounded-xl shadow-md overflow-hidden mb-8"
         >
-          <div className="bg-gradient-to-br from-red-100 to-red-200 h-96 flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTEsIDExMywgMTMzLCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50"></div>
-            <div className="text-center z-10">
-              <MapPin className="w-16 h-16 text-red-600 mx-auto mb-4" />
-              <p className="text-gray-700 font-medium">
-                Interactive map showing donation centres
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                {userLocation
-                  ? "Centres sorted by distance from your location"
-                  : "Enable location to see centres on map"}
-              </p>
-            </div>
-          </div>
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            zoom={userLocation ? 12 : 5}
+            center={
+              userLocation
+                ? { lat: userLocation.latitude, lng: userLocation.longitude }
+                : defaultCenter
+            }
+          >
+            {/* Show User's Exact Location */}
+            {userLocation && (
+              <Marker
+                position={{ lat: userLocation.latitude, lng: userLocation.longitude }}
+                icon={{
+                  url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+                }}
+              />
+            )}
+
+            {/* Automatically Show Nearby Centres */}
+            {centres.map((centre) => (
+              <Marker
+                key={centre.id}
+                position={{ lat: centre.latitude, lng: centre.longitude }}
+                onClick={() => setSelectedCentre(centre)}
+                icon={{
+                  url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                }}
+              />
+            ))}
+
+            {/* Info Window when clicking a centre marker */}
+            {selectedCentre && (
+              <InfoWindow
+                position={{
+                  lat: selectedCentre.latitude,
+                  lng: selectedCentre.longitude,
+                }}
+                onCloseClick={() => setSelectedCentre(null)}
+              >
+                <div className="p-2 min-w-[200px]">
+                  <h3 className="font-bold text-gray-900 mb-1">{selectedCentre.name}</h3>
+                  <p className="text-sm text-gray-600">{selectedCentre.address}</p>
+                  <p className="text-sm font-medium text-red-600 mt-2">{selectedCentre.phone}</p>
+                </div>
+              </InfoWindow>
+            )}
+          </GoogleMap>
         </motion.div>
 
         {/* Centres List */}
