@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "./ui/input-otp";
+import { supabase } from "@/lib/supabase";
 
 interface OTPVerificationProps {
   contact: string;
@@ -18,7 +19,7 @@ export default function OTPVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     setError("");
 
     if (otp.length !== 6) {
@@ -28,29 +29,53 @@ export default function OTPVerification({
 
     setIsVerifying(true);
 
-    // Simulate OTP verification
-    setTimeout(() => {
-      // In a real app, verify OTP with backend
-      if (otp === "123456" || otp.length === 6) {
-        // Redirect to signup form
-        navigate("/signup", {
-          state: {
-            contact,
-            authMethod,
-          },
-        });
-      } else {
-        setError("Invalid OTP. Please try again.");
-        setIsVerifying(false);
-      }
-    }, 1500);
+    let result;
+
+    if (authMethod === "email") {
+      result = await supabase.auth.verifyOtp({
+        email: contact,
+        token: otp,
+        type: "email",
+      });
+    } else {
+      result = await supabase.auth.verifyOtp({
+        phone: "+91" + contact,
+        token: otp,
+        type: "sms",
+      });
+    }
+
+    const { error } = result;
+
+    if (error) {
+      setError("Invalid OTP");
+      setIsVerifying(false);
+      return;
+    }
+
+    navigate("/signup", {
+      state: {
+        contact,
+        authMethod,
+      },
+    });
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setOtp("");
     setError("");
-    // Simulate resending OTP
-    alert("OTP has been resent to " + contact);
+
+    if (authMethod === "email") {
+      await supabase.auth.signInWithOtp({
+        email: contact,
+      });
+    } else {
+      await supabase.auth.signInWithOtp({
+        phone: "+91" + contact,
+      });
+    }
+
+    alert("OTP resent to " + contact);
   };
 
   return (

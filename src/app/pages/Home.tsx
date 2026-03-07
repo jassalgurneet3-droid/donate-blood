@@ -18,24 +18,28 @@ export default function Home() {
   const [location, setLocation] = useState("");
   const [filteredDonors, setFilteredDonors] = useState(mockDonors.slice(0, 6));
 
-  const handleSearch = () => {
-    let results = [...mockDonors];
+  const handleSearch = async () => {
+    let query = supabase
+      .from("users")
+      .select("*")
+      .eq("userType", "donor");
 
     if (selectedBloodGroup) {
-      results = results.filter(
-        (donor) => donor.bloodGroup === selectedBloodGroup
-      );
+      query = query.eq("bloodGroup", selectedBloodGroup);
     }
 
     if (location) {
-      results = results.filter(
-        (donor) =>
-          donor.city.toLowerCase().includes(location.toLowerCase()) ||
-          donor.state.toLowerCase().includes(location.toLowerCase())
-      );
+      query = query.ilike("city", `%${location}%`);
     }
 
-    setFilteredDonors(results.slice(0, 6));
+    const { data, error } = await query;
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    setFilteredDonors(data.slice(0, 6));
   };
 
   return (

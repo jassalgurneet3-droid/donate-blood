@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Mail, Phone, ArrowRight, Droplet } from "lucide-react";
 import OTPVerification from "../components/OTPVerification";
+import { supabase } from "@/lib/supabase";
 
 export default function Auth() {
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
@@ -9,7 +10,7 @@ export default function Auth() {
   const [showOTP, setShowOTP] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -28,8 +29,27 @@ export default function Auth() {
       }
     }
 
-    // Simulate sending OTP
-    setShowOTP(true);
+    try {
+      if (authMethod === "email") {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: contact,
+        });
+
+        if (error) throw error;
+      } else {
+        const phone = "+91" + contact.replace(/\D/g, "");
+
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: phone,
+        });
+
+        if (error) throw error;
+      }
+
+      setShowOTP(true);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   if (showOTP) {
@@ -62,22 +82,20 @@ export default function Auth() {
           <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setAuthMethod("email")}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                authMethod === "email"
-                  ? "bg-white text-red-600 shadow"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${authMethod === "email"
+                ? "bg-white text-red-600 shadow"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <Mail className="w-4 h-4 inline mr-2" />
               Email
             </button>
             <button
               onClick={() => setAuthMethod("phone")}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                authMethod === "phone"
-                  ? "bg-white text-red-600 shadow"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${authMethod === "phone"
+                ? "bg-white text-red-600 shadow"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               <Phone className="w-4 h-4 inline mr-2" />
               Phone
