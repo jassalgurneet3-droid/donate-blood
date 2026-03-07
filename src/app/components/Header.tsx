@@ -15,6 +15,7 @@ export default function Header() {
     { path: "/become-donor", label: "Become a Donor" },
     { path: "/nearby-centres", label: "Find Nearby Centre" },
     { path: "/blood-compatibility", label: "Blood Compatibility" },
+    { path: "/education", label: "Education" }, 
   ];
 
   const isActive = (path: string) => location.pathname === path;
