@@ -1,51 +1,91 @@
-import { Users, UserCheck, AlertCircle, Droplet, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, UserCheck, AlertCircle, Droplet, TrendingUp, TrendingDown } from "lucide-react";
 import { motion } from 'motion/react';
+import { useEffect, useState } from "react";
+import { supabase } from '@/lib/supabase';
 
-
-const analyticsData = [
-  {
-    title: 'Total Donors',
-    value: '2,847',
-    change: '+12.5%',
-    isPositive: true,
-    icon: Users,
-    gradient: 'from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20',
-    iconBg: 'bg-blue-500',
-    chartData: [20, 35, 25, 40, 30, 45, 38]
-  },
-  {
-    title: 'Available Donors',
-    value: '1,642',
-    change: '+8.2%',
-    isPositive: true,
-    icon: UserCheck,
-    gradient: 'from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20',
-    iconBg: 'bg-[#27ae60]',
-    chartData: [30, 25, 40, 35, 50, 45, 55]
-  },
-  {
-    title: 'Emergency Requests',
-    value: '23',
-    change: '-4.3%',
-    isPositive: false,
-    icon: AlertCircle,
-    gradient: 'from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20',
-    iconBg: 'bg-[#f39c12]',
-    chartData: [45, 40, 35, 30, 28, 25, 23]
-  },
-  {
-    title: 'Total Donations',
-    value: '8,234',
-    change: '+15.8%',
-    isPositive: true,
-    icon: Droplet,
-    gradient: 'from-red-500/10 to-red-600/10 dark:from-red-500/20 dark:to-red-600/20',
-    iconBg: 'bg-[#c0392b]',
-    chartData: [25, 30, 35, 45, 50, 60, 70]
-  },
-];
 
 export function AnalyticsCards() {
+
+  const [totalDonors, setTotalDonors] = useState(0)
+  const [availableDonors, setAvailableDonors] = useState(0)
+  const [emergencyRequests, setEmergencyRequests] = useState(0)
+  const [totalDonations, setTotalDonations] = useState(0)
+
+  const analyticsData = [
+    {
+      title: 'Total Donors',
+      value: totalDonors,
+      change: '+12.5%',
+      isPositive: true,
+      icon: Users,
+      gradient: 'from-blue-500/10 to-blue-600/10',
+      iconBg: 'bg-blue-500',
+      chartData: [20, 35, 25, 40, 30, 45, 38]
+    },
+
+    {
+      title: 'Available Donors',
+      value: availableDonors,
+      change: '+8.2%',
+      isPositive: true,
+      icon: UserCheck,
+      gradient: 'from-green-500/10 to-green-600/10',
+      iconBg: 'bg-green-500',
+      chartData: [30, 25, 40, 35, 50, 45, 55]
+    },
+
+    {
+      title: 'Emergency Requests',
+      value: 5,
+      change: '-4.3%',
+      isPositive: false,
+      icon: AlertCircle,
+      gradient: 'from-orange-500/10 to-orange-600/10',
+      iconBg: 'bg-orange-500',
+      chartData: [45, 40, 35, 30, 28, 25, 23]
+    },
+
+    {
+      title: 'Total Donations',
+      value: totalDonations,
+      change: '+15.8%',
+      isPositive: true,
+      icon: Droplet,
+      gradient: 'from-red-500/10 to-red-600/10',
+      iconBg: 'bg-red-500',
+      chartData: [25, 30, 35, 45, 50, 60, 70]
+    }
+  ];
+
+  useEffect(() => {
+
+    const loadStats = async () => {
+
+      const { count: donations } = await supabase
+        .from("donations")
+        .select("*", { count: "exact", head: true })
+
+      setTotalDonations(donations || 0)
+
+      const { count: donors } = await supabase
+        .from("donors")
+        .select("*", { count: "exact", head: true })
+
+      setTotalDonors(donors || 0)
+
+      const { count: available } = await supabase
+        .from("donors")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "available")
+
+      setAvailableDonors(available || 0)
+
+    }
+
+    loadStats()
+
+  }, [])
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
       {analyticsData.map((card, index) => (
@@ -67,11 +107,10 @@ export function AnalyticsCards() {
             <div className={`${card.iconBg} p-3 rounded-xl shadow-lg`}>
               <card.icon className="w-6 h-6 text-white" />
             </div>
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-              card.isPositive 
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
-                : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-            }`}>
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${card.isPositive
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+              }`}>
               {card.isPositive ? (
                 <TrendingUp className="w-3 h-3" />
               ) : (
