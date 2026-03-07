@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   Search,
@@ -16,20 +16,51 @@ import { supabase } from "../../lib/supabase";
 export default function Home() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState("");
   const [location, setLocation] = useState("");
-  const [filteredDonors, setFilteredDonors] = useState(mockDonors.slice(0, 6));
+  const [filteredDonors, setFilteredDonors] = useState<any[]>([]);
+
+  const loadDonors = async () => {
+    const { data } = await supabase
+      .from("donors")
+      .select("*");
+
+    if (data) {
+      setFilteredDonors(data);
+    }
+  };
+
+  useEffect(() => {
+
+    const channel = supabase
+      .channel("donors-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "donors" },
+        (payload) => {
+          console.log("Change received:", payload);
+          loadDonors(); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+
+  }, []);
 
   const handleSearch = async () => {
-    let query = supabase
-      .from("users")
-      .select("*")
-      .eq("userType", "donor");
 
-    if (selectedBloodGroup) {
+    let query = supabase
+      .from("donors")
+      .select("*")
+      .ilike("city", `%${location}%`);
+
+    if (selectedBloodGroup && selectedBloodGroup !== "Select Blood Group") {
       query = query.eq("bloodGroup", selectedBloodGroup);
     }
 
-    if (location) {
-      query = query.ilike("city", `%${location}%`);
+    if (location && location.trim() !== "") {
+      query = query.ilike("city", `%${location.trim()}%`);
     }
 
     const { data, error } = await query;
@@ -39,7 +70,8 @@ export default function Home() {
       return;
     }
 
-    setFilteredDonors(data.slice(0, 6));
+    setFilteredDonors(data ?? []);
+
   };
 
   return (

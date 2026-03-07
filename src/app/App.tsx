@@ -6,11 +6,11 @@ import "locomotive-scroll/dist/locomotive-scroll.css";
 
 export default function App() {
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     const scroll = new LocomotiveScroll({
-      el: scrollRef.current as HTMLElement,
+      el: scrollRef.current,
       smooth: true,
     });
 
