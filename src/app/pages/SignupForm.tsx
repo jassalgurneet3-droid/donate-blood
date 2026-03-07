@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate, useLocation } from "react-router";
 import { User, MapPin, Heart, Building2 } from "lucide-react";
 import { bloodGroups } from "../utils/mockData";
+import { supabase } from "../../lib/supabase"
 
 export default function SignupForm() {
   const navigate = useNavigate();
@@ -78,10 +79,9 @@ export default function SignupForm() {
     }
   }, [allowLocation]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Store form data with location
     const registrationData = {
       ...formData,
       userType,
@@ -90,12 +90,20 @@ export default function SignupForm() {
 
     console.log("Registration Data:", registrationData);
 
-    // Navigate to eligibility check page
+    const { error } = await supabase
+      .from("users")
+      .insert([registrationData]);
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
     navigate("/eligibility", {
       state: registrationData,
     });
   };
-
+  
   if (!contact) {
     navigate("/auth");
     return null;
@@ -128,16 +136,14 @@ export default function SignupForm() {
                 <button
                   type="button"
                   onClick={() => setUserType("donor")}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    userType === "donor"
-                      ? "border-red-600 bg-red-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  className={`p-6 rounded-xl border-2 transition-all ${userType === "donor"
+                    ? "border-red-600 bg-red-50"
+                    : "border-gray-200 hover:border-gray-300"
+                    }`}
                 >
                   <Heart
-                    className={`w-12 h-12 mx-auto mb-3 ${
-                      userType === "donor" ? "text-red-600" : "text-gray-400"
-                    }`}
+                    className={`w-12 h-12 mx-auto mb-3 ${userType === "donor" ? "text-red-600" : "text-gray-400"
+                      }`}
                   />
                   <h3 className="font-semibold text-gray-900 mb-1">Donor</h3>
                   <p className="text-sm text-gray-600">
@@ -148,18 +154,16 @@ export default function SignupForm() {
                 <button
                   type="button"
                   onClick={() => setUserType("beneficiary")}
-                  className={`p-6 rounded-xl border-2 transition-all ${
-                    userType === "beneficiary"
-                      ? "border-red-600 bg-red-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  className={`p-6 rounded-xl border-2 transition-all ${userType === "beneficiary"
+                    ? "border-red-600 bg-red-50"
+                    : "border-gray-200 hover:border-gray-300"
+                    }`}
                 >
                   <Building2
-                    className={`w-12 h-12 mx-auto mb-3 ${
-                      userType === "beneficiary"
-                        ? "text-red-600"
-                        : "text-gray-400"
-                    }`}
+                    className={`w-12 h-12 mx-auto mb-3 ${userType === "beneficiary"
+                      ? "text-red-600"
+                      : "text-gray-400"
+                      }`}
                   />
                   <h3 className="font-semibold text-gray-900 mb-1">
                     Beneficiary

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { mockDonors, bloodGroups } from "../utils/mockData";
+import { supabase } from "../../lib/supabase";
 
 export default function Home() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState("");
