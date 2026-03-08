@@ -1,46 +1,33 @@
 import { Search, Filter, Edit, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
 
-export function DonorTable() {
+type Donor = {
+  id: number
+  fullname: string
+  city: string
+  bloodgroup: string
+  status?: "available" | "unavailable"
+}
+
+export function DonorTable({ donors }: { donors: Donor[] }) {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [donorsData, setDonorsData] = useState<any[]>([]);
 
-  useEffect(() => {
-
-    const loadDonors = async () => {
-
-      const { data, error } = await supabase
-        .from("donors")
-        .select("*");
-
-      if (!error && data) {
-        setDonorsData(data);
-      }
-
-    };
-
-    loadDonors();
-
-  }, []);
-
-  console.log(donorsData)
-  const filteredDonors = donorsData.filter((donor) => {
+  const filteredDonors = donors?.filter((donor) => {
 
     const matchesSearch =
-      donor.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      donor.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      donor.bloodgroup?.toLowerCase().includes(searchQuery.toLowerCase());
+      (donor.fullname || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (donor.city || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (donor.bloodgroup || "").toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesFilter =
       filterStatus === "All" ||
       donor.status?.toLowerCase() === filterStatus.toLowerCase();
-      
-      return matchesSearch && matchesFilter;
-      
+
+    return matchesSearch && matchesFilter;
+
   });
 
   return (
@@ -153,11 +140,11 @@ export function DonorTable() {
                   <div className="flex items-center gap-3">
 
                     <div className="w-10 h-10 bg-gradient-to-br from-[#c0392b] to-[#e74c3c] rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {donor.fullName?.charAt(0)}
+                      {donor.fullname?.charAt(0)}
                     </div>
 
                     <span className="font-medium text-[#2c3e50] dark:text-white">
-                      {donor.fullName}
+                      {donor.fullname}
                     </span>
 
                   </div>
@@ -180,19 +167,17 @@ export function DonorTable() {
 
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold
-                    ${
-                      donor.status === "available"
+                    ${donor.status === "available"
                         ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
                         : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                    }`}
+                      }`}
                   >
 
                     <span
-                      className={`w-2 h-2 rounded-full mr-2 ${
-                        donor.status === "available"
-                          ? "bg-green-500"
-                          : "bg-red-500"
-                      }`}
+                      className={`w-2 h-2 rounded-full mr-2 ${donor.status === "available"
+                        ? "bg-green-500"
+                        : "bg-red-500"
+                        }`}
                     />
 
                     {donor.status}

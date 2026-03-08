@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from '@/lib/supabase';
 
 
-export function AnalyticsCards() {
+export function AnalyticsCards({ donors }: { donors: any[] }) {
 
   const [totalDonors, setTotalDonors] = useState(0)
   const [availableDonors, setAvailableDonors] = useState(0)
@@ -36,7 +36,7 @@ export function AnalyticsCards() {
 
     {
       title: 'Emergency Requests',
-      value: 5,
+      value: emergencyRequests,
       change: '-4.3%',
       isPositive: false,
       icon: AlertCircle,
@@ -59,32 +59,26 @@ export function AnalyticsCards() {
 
   useEffect(() => {
 
-    const loadStats = async () => {
+  if (!donors) return
 
-      const { count: donations } = await supabase
-        .from("donations")
-        .select("*", { count: "exact", head: true })
+  setTotalDonors(donors.length)
 
-      setTotalDonations(donations || 0)
+  const available = donors.filter((d:any)=> d.status === "available")
+  setAvailableDonors(available.length)
 
-      const { count: donors } = await supabase
-        .from("donors")
-        .select("*", { count: "exact", head: true })
+  const loadStats = async () => {
 
-      setTotalDonors(donors || 0)
+    const { count } = await supabase
+      .from("donations")
+      .select("*", { count: "exact", head: true })
 
-      const { count: available } = await supabase
-        .from("donors")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "available")
+    setTotalDonations(count || 0)
 
-      setAvailableDonors(available || 0)
+  }
 
-    }
+  loadStats()
 
-    loadStats()
-
-  }, [])
+}, [donors])
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
