@@ -16,7 +16,12 @@ export default function AdminDashboard() {
       .from("donors")
       .select("*")
 
-    if (!error && data) {
+    if (error) {
+      console.log("SUPABASE ERROR:", error)
+    }
+
+    if (data) {
+      console.log("DONORS DATA:", data)
       setDonors(data)
     }
 
@@ -50,7 +55,7 @@ export default function AdminDashboard() {
       <div className="w-4/5 max-w-none px-6 py-16 mx-auto">
 
         <div className="w-full px-6 py-6 mt-0">
-          <AnalyticsCards donors={donors}/>
+          <AnalyticsCards donors={donors} />
           <div className="mt-8">
             <ChartsSection donors={donors} />
           </div>

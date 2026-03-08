@@ -59,26 +59,34 @@ export function AnalyticsCards({ donors }: { donors: any[] }) {
 
   useEffect(() => {
 
-  if (!donors) return
+    const loadStats = async () => {
 
-  setTotalDonors(donors.length)
+      const { count: donations } = await supabase
+        .from("donations")
+        .select("*", { count: "exact", head: true })
 
-  const available = donors.filter((d:any)=> d.status === "available")
-  setAvailableDonors(available.length)
+      setTotalDonations(donations || 0)
 
-  const loadStats = async () => {
+    }
 
-    const { count } = await supabase
-      .from("donations")
-      .select("*", { count: "exact", head: true })
+    loadStats()
 
-    setTotalDonations(count || 0)
+    const channel = supabase
+      .channel("donations-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "donations" },
+        () => {
+          loadStats()
+        }
+      )
+      .subscribe()
 
-  }
+    return () => {
+      supabase.removeChannel(channel)
+    }
 
-  loadStats()
-
-}, [donors])
+  }, [])
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
