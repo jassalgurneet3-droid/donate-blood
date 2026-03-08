@@ -13,16 +13,19 @@ const monthlyData = [
   { month: 'Jul', donations: 710 },
 ]
 
-export function ChartsSection() {
+export function ChartsSection({ donors }: { donors: any[] }) {
 
-  const [bloodData, setBloodData] = useState([])
+  const [bloodData, setBloodData] = useState<any[]>([])
   const [monthlyData, setMonthlyData] = useState<any[]>([])
 
-  const loadMonthlyData = async () => {
+  useEffect(() => {
 
-    const { data } = await supabase
-      .from("donors")
-      .select("created_at")
+    if (!donors || donors.length === 0) return
+
+    const groups: any = {}
+
+    // MONTHLY DATA
+    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
     const months: any = {
       Jan: 0, Feb: 0, Mar: 0, Apr: 0,
@@ -30,52 +33,50 @@ export function ChartsSection() {
       Sep: 0, Oct: 0, Nov: 0, Dec: 0
     }
 
-    data?.forEach((d: any) => {
+    const currentYear = new Date().getFullYear()
+
+    donors.forEach((d: any) => {
+
+      if (!d.created_at) return
 
       const date = new Date(d.created_at)
-      const month = date.toLocaleString("default", { month: "short" })
 
-      if (months[month] !== undefined) {
-        months[month]++
-      }
+      // ignore old records from previous years
+      if (date.getFullYear() !== currentYear) return
+
+      const monthIndex = date.getMonth()
+      const month = monthOrder[monthIndex]
+
+      months[month]++
 
     })
 
-    const chartData = Object.keys(months).map((m) => ({
+    const chartData = monthOrder.map((m) => ({
       month: m,
       donations: months[m]
     }))
 
     setMonthlyData(chartData)
-  }
 
-  useEffect(() => {
+    // BLOOD GROUP DATA
+    donors.forEach((d: any) => {
 
-    const loadBloodData = async () => {
+      const group = d.bloodgroup
+      if (!group) return
 
-      const { data } = await supabase
-        .from("donors")
-        .select("bloodgroup")
+      groups[group] = (groups[group] || 0) + 1
 
-      const counts: any = {}
+    })
 
-      data?.forEach((d) => {
-        counts[d.bloodgroup] = (counts[d.bloodgroup] || 0) + 1
-      })
+    const pieData: any[] = Object.keys(groups).map((g) => ({
+      name: g,
+      value: groups[g],
+      color: getColor(g)
+    }))
 
-      const chartData: any = Object.keys(counts).map((group: any) => ({
-        name: group,
-        value: counts[group],
-        color: getColor(group)
-      }))
+    setBloodData(pieData)
 
-      setBloodData(chartData)
-    }
-
-    loadBloodData()
-    loadMonthlyData()
-
-  }, [])
+  }, [donors])
 
   const getColor = (group: any) => {
     const colors: any = {
