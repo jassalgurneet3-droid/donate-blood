@@ -59,7 +59,7 @@ export default function Home() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          
+
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           );
@@ -75,7 +75,7 @@ export default function Home() {
           if (addressParts.length > 0) {
             const fullAddress = addressParts.join(", ");
             setLocation(fullAddress);
-            
+
             // Automatically fetch best match donors for this specific city!
             if (townOrCity) {
               loadDonors(townOrCity);
@@ -124,8 +124,7 @@ export default function Home() {
     let query = supabase.from("donors").select("*");
 
     if (selectedBloodGroup && selectedBloodGroup !== "Select Blood Group") {
-      // Also handles potential snake_case column mismatch for searches
-      query = query.or(`bloodGroup.eq.${selectedBloodGroup},blood_group.eq.${selectedBloodGroup}`);
+      query = query.eq("bloodgroup", selectedBloodGroup);
     }
 
     if (location && location.trim() !== "") {
@@ -160,29 +159,29 @@ export default function Home() {
             <p className="text-xl md:text-2xl mb-8 text-red-100">
               Connect with donors and help those in need
             </p>
-           <div className="flex flex-wrap justify-center gap-4">
-  <Link
-    to="/become-donor"
-    className="group relative overflow-hidden inline-flex items-center justify-center px-8 py-4 bg-white text-red-600 rounded-lg font-semibold hover:scale-105 active:scale-110 transition-all duration-300"
-  >
-    {/* Sliding background effect */}
-    <span className="absolute inset-0 w-full h-full bg-gray-100 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
-    
-    {/* Text wrapper to stay on top */}
-    <span className="relative z-10">Become a Donor</span>
-  </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                to="/become-donor"
+                className="group relative overflow-hidden inline-flex items-center justify-center px-8 py-4 bg-white text-red-600 rounded-lg font-semibold hover:scale-105 active:scale-110 transition-all duration-300"
+              >
+                {/* Sliding background effect */}
+                <span className="absolute inset-0 w-full h-full bg-gray-100 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
 
-  <Link
-    to="/nearby-centres"
-    className="group relative overflow-hidden inline-flex items-center justify-center px-8 py-4 bg-red-800 text-white rounded-lg font-semibold hover:scale-105 active:scale-110 transition-all duration-300"
-  >
-    {/* Sliding background effect */}
-    <span className="absolute inset-0 w-full h-full bg-red-900 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
-    
-    {/* Text wrapper to stay on top */}
-    <span className="relative z-10">Find Blood Bank</span>
-  </Link>
-</div>
+                {/* Text wrapper to stay on top */}
+                <span className="relative z-10">Become a Donor</span>
+              </Link>
+
+              <Link
+                to="/nearby-centres"
+                className="group relative overflow-hidden inline-flex items-center justify-center px-8 py-4 bg-red-800 text-white rounded-lg font-semibold hover:scale-105 active:scale-110 transition-all duration-300"
+              >
+                {/* Sliding background effect */}
+                <span className="absolute inset-0 w-full h-full bg-red-900 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
+
+                {/* Text wrapper to stay on top */}
+                <span className="relative z-10">Find Blood Bank</span>
+              </Link>
+            </div>
 
           </motion.div>
         </div>
@@ -247,19 +246,19 @@ export default function Home() {
                 <Search className="w-5 h-5" />
                 Search
               </button> */}
-             <button
-  onClick={handleSearch}
-  className="group relative overflow-hidden w-full px-6 py-3 bg-red-600 text-white rounded-lg active:scale-95 transition-all duration-300 font-medium flex items-center justify-center"
->
-  {/* Sliding background effect */}
-  <span className="absolute inset-0 w-full h-full bg-red-800 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
+              <button
+                onClick={handleSearch}
+                className="group relative overflow-hidden w-full px-6 py-3 bg-red-600 text-white rounded-lg active:scale-95 transition-all duration-300 font-medium flex items-center justify-center"
+              >
+                {/* Sliding background effect */}
+                <span className="absolute inset-0 w-full h-full bg-red-800 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-in-out"></span>
 
-  {/* Button content (wrapped to stay above the sliding background) */}
-  <span className="relative z-10 flex items-center justify-center gap-2">
-    <Search className="w-5 h-5" />
-    Search
-  </span>
-</button>
+                {/* Button content (wrapped to stay above the sliding background) */}
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <Search className="w-5 h-5" />
+                  Search
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -345,21 +344,21 @@ export default function Home() {
           {filteredDonors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredDonors.map((donor, index) => {
-                
+
                 // --- SAFE DATA MAPPING ---
                 // This protects your UI from blank variables whether Supabase uses camelCase or snake_case
-                const donorName = donor.name || donor.full_name || "Generous Donor";
+                const donorName = donor.name || donor.fullname || "Generous Donor";
                 const donorAge = donor.age || "-";
                 const donorGender = donor.gender || "-";
-                const bloodGroup = donor.bloodGroup || donor.blood_group || "?";
+                const bloodGroup = donor.bloodGroup || donor.bloodgroup || "?";
                 const city = donor.city || "Unknown City";
                 const state = donor.state || "";
-                
+
                 const lastDonationRaw = donor.lastDonation || donor.last_donation;
-                const lastDonationDate = lastDonationRaw 
-                  ? new Date(lastDonationRaw).toLocaleDateString() 
+                const lastDonationDate = lastDonationRaw
+                  ? new Date(lastDonationRaw).toLocaleDateString()
                   : "Never / Unknown";
-                  
+
                 const isEmergency = donor.availableForEmergency || donor.available_for_emergency || false;
 
                 return (
