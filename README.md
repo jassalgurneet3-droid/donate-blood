@@ -1,5 +1,13 @@
 # FindBlood - Blood Donation Platform
 
+***Note -If API not loaded, You need to create a .env file inside donate-blood repo (next to your package.json) and write: 
+VITE_GEMINI_API_KEY=your API key
+(create your API key from Google ai studio.
+<br>
+Deploy: https://donate-blood-seven.vercel.app
+<br>
+Ppt: https://www.canva.com/design/DAHCQBnMgCg/h81Yyxo_Cs8Q0yV2nLnkjg/view?utm_content=DAHCQBnMgCg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h5638e749f6
+<br>
 Demo link 
 <br>
 https://drive.google.com/file/d/1_AZMkfJf065Wgbcaw9zRXtIAYWXKr--6/view?usp=drivesdk
