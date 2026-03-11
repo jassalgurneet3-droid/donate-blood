@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   return (
     <SidebarProvider>
       <div className="w-4/5 max-w-none px-6 py-6 mx-auto">
-        <div className="w-full px-6 py-6">
+        <div className="w-full px-6 py-6 flex flex-col gap-6">
           {/* 3. Pass the signal to your components so they know when to update */}
           <AnalyticsCards refreshTrigger={refreshTrigger} />
           <ChartsSection refreshTrigger={refreshTrigger} />
